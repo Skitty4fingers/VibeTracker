@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { getDb, save, allRows } = require('../db/database');
+const { getDb, allRows } = require('../db/database');
 
 // GET /api/rubric
 router.get('/', async (req, res) => {
     try {
         const db = await getDb();
-        const rows = allRows(db, 'SELECT * FROM RubricCategory ORDER BY id');
+        const rows = await allRows(db, 'SELECT * FROM RubricCategory ORDER BY id');
         res.json(rows);
     } catch (e) {
         console.error('GET /api/rubric error:', e);
@@ -34,12 +34,13 @@ router.put('/', async (req, res) => {
         if (errors.length) return res.status(400).json({ errors });
 
         for (const item of categories) {
-            db.run('UPDATE RubricCategory SET name = ?, guidance = ? WHERE id = ?',
-                [item.name.trim(), (item.guidance || '').trim(), item.id]);
+            await db.execute({
+                sql: 'UPDATE RubricCategory SET name = ?, guidance = ? WHERE id = ?',
+                args: [item.name.trim(), (item.guidance || '').trim(), item.id],
+            });
         }
-        save();
 
-        const rows = allRows(db, 'SELECT * FROM RubricCategory ORDER BY id');
+        const rows = await allRows(db, 'SELECT * FROM RubricCategory ORDER BY id');
         res.json(rows);
     } catch (e) {
         console.error('PUT /api/rubric error:', e);

@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { getDb, save, allRows, getRow, lastInsertId } = require('../db/database');
+const { getDb, allRows, getRow } = require('../db/database');
 
 function parseMembers(text) {
     if (!text) return [];
     return text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 }
 
-function validateTeam(body, db, excludeId) {
+async function validateTeam(body, db, excludeId) {
     const errors = [];
     const { teamName, projectName, membersText } = body;
 
@@ -16,7 +16,7 @@ function validateTeam(body, db, excludeId) {
     } else if (teamName.trim().length > 60) {
         errors.push('teamName max 60 characters');
     } else {
-        const existing = getRow(db, 'SELECT id FROM Team WHERE teamName = ?', [teamName.trim()]);
+        const existing = await getRow(db, 'SELECT id FROM Team WHERE teamName = ?', [teamName.trim()]);
         if (existing && existing.id !== excludeId) {
             errors.push('teamName must be unique');
         }
@@ -50,7 +50,7 @@ function validateTeam(body, db, excludeId) {
 router.get('/', async (req, res) => {
     try {
         const db = await getDb();
-        const teams = allRows(db, 'SELECT * FROM Team ORDER BY teamName');
+        const teams = await allRows(db, 'SELECT * FROM Team ORDER BY teamName');
         res.json(teams.map(t => ({
             ...t,
             members: parseMembers(t.membersText),
@@ -66,27 +66,27 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const db = await getDb();
-        const countResult = db.exec('SELECT COUNT(*) as cnt FROM Team');
-        const teamCount = countResult[0].values[0][0];
+        const countResult = await db.execute('SELECT COUNT(*) as cnt FROM Team');
+        const teamCount = countResult.rows[0].cnt;
         if (teamCount >= 20) {
             return res.status(400).json({ errors: ['Maximum 20 teams allowed'] });
         }
 
-        const errors = validateTeam(req.body, db);
+        const errors = await validateTeam(req.body, db);
         if (errors.length) return res.status(400).json({ errors });
 
         const { teamName, projectName, membersText, repoUrl, demoUrl, description } = req.body;
-        db.run(`
-      INSERT INTO Team (teamName, projectName, membersText, repoUrl, demoUrl, description, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `, [
-            teamName.trim(), projectName.trim(), membersText,
-            (repoUrl || '').trim(), (demoUrl || '').trim(), (description || '').trim()
-        ]);
-        save();
+        await db.execute({
+            sql: `INSERT INTO Team (teamName, projectName, membersText, repoUrl, demoUrl, description, createdAt, updatedAt)
+                  VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+            args: [
+                teamName.trim(), projectName.trim(), membersText,
+                (repoUrl || '').trim(), (demoUrl || '').trim(), (description || '').trim()
+            ],
+        });
 
         // Get the newly inserted row by unique teamName
-        const team = getRow(db, 'SELECT * FROM Team WHERE teamName = ?', [teamName.trim()]);
+        const team = await getRow(db, 'SELECT * FROM Team WHERE teamName = ?', [teamName.trim()]);
         res.status(201).json({ ...team, members: parseMembers(team.membersText), memberCount: parseMembers(team.membersText).length });
     } catch (e) {
         console.error('POST /api/teams error:', e);
@@ -99,24 +99,24 @@ router.put('/:id', async (req, res) => {
     try {
         const db = await getDb();
         const id = parseInt(req.params.id, 10);
-        const existing = getRow(db, 'SELECT * FROM Team WHERE id = ?', [id]);
+        const existing = await getRow(db, 'SELECT * FROM Team WHERE id = ?', [id]);
         if (!existing) return res.status(404).json({ errors: ['Team not found'] });
 
-        const errors = validateTeam(req.body, db, id);
+        const errors = await validateTeam(req.body, db, id);
         if (errors.length) return res.status(400).json({ errors });
 
         const { teamName, projectName, membersText, repoUrl, demoUrl, description } = req.body;
-        db.run(`
-      UPDATE Team SET teamName=?, projectName=?, membersText=?, repoUrl=?, demoUrl=?, description=?, updatedAt=datetime('now')
-      WHERE id=?
-    `, [
-            teamName.trim(), projectName.trim(), membersText,
-            (repoUrl || '').trim(), (demoUrl || '').trim(), (description || '').trim(),
-            id
-        ]);
-        save();
+        await db.execute({
+            sql: `UPDATE Team SET teamName=?, projectName=?, membersText=?, repoUrl=?, demoUrl=?, description=?, updatedAt=datetime('now')
+                  WHERE id=?`,
+            args: [
+                teamName.trim(), projectName.trim(), membersText,
+                (repoUrl || '').trim(), (demoUrl || '').trim(), (description || '').trim(),
+                id
+            ],
+        });
 
-        const team = getRow(db, 'SELECT * FROM Team WHERE id = ?', [id]);
+        const team = await getRow(db, 'SELECT * FROM Team WHERE id = ?', [id]);
         res.json({ ...team, members: parseMembers(team.membersText), memberCount: parseMembers(team.membersText).length });
     } catch (e) {
         console.error('PUT /api/teams error:', e);
@@ -129,12 +129,11 @@ router.delete('/:id', async (req, res) => {
     try {
         const db = await getDb();
         const id = parseInt(req.params.id, 10);
-        const existing = getRow(db, 'SELECT * FROM Team WHERE id = ?', [id]);
+        const existing = await getRow(db, 'SELECT * FROM Team WHERE id = ?', [id]);
         if (!existing) return res.status(404).json({ errors: ['Team not found'] });
 
-        db.run('DELETE FROM Score WHERE teamId = ?', [id]);
-        db.run('DELETE FROM Team WHERE id = ?', [id]);
-        save();
+        await db.execute({ sql: 'DELETE FROM Score WHERE teamId = ?', args: [id] });
+        await db.execute({ sql: 'DELETE FROM Team WHERE id = ?', args: [id] });
         res.json({ success: true });
     } catch (e) {
         console.error('DELETE /api/teams error:', e);

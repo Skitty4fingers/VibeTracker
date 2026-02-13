@@ -3,6 +3,8 @@
 Lightweight internal hackathon scoring and leaderboard web app.
 **No authentication** — designed for trusted internal networks.
 
+**Live:** [vibetracker-nine.vercel.app](https://vibetracker-nine.vercel.app)
+
 ## Features
 
 - **Event Customization**: Set event name, icon, tagline, and an optional **countdown timer**.
@@ -11,20 +13,55 @@ Lightweight internal hackathon scoring and leaderboard web app.
 - **Sample Data**: Automatically seeds with 3 sample teams and scores for immediate demonstration.
 - **Announcements**: Create and pin announcements to display on the TV board.
 
+## Tech Stack
+
+- **Runtime:** Node.js + Express
+- **Database:** [Turso](https://turso.tech) (libSQL / SQLite-compatible cloud database)
+- **Package Manager:** pnpm
+- **Hosting:** [Vercel](https://vercel.com) (serverless functions)
+- **Frontend:** Vanilla HTML/CSS/JS (SPA-style client-side routing)
+
 ## Quick Start
+
+### Local Development
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Start the server
-npm start
+pnpm start
 
 # Or with auto-reload for development
-npm run dev
+pnpm dev
 ```
 
 The app runs at **http://localhost:3000** (or set `PORT` env variable).
+
+By default, the app uses a **local SQLite file** at `data/vibetracker.db`. To connect to Turso instead, set environment variables:
+
+```bash
+export TURSO_DATABASE_URL="libsql://your-database.turso.io"
+export TURSO_AUTH_TOKEN="your-auth-token"
+```
+
+### Deploying to Vercel
+
+The project is configured for Vercel deployment with a serverless function entry point at `api/index.js`.
+
+**Required environment variables** (set in Vercel dashboard or CLI):
+
+| Variable | Description |
+|---|---|
+| `TURSO_DATABASE_URL` | Your Turso database URL (`libsql://...`) |
+| `TURSO_AUTH_TOKEN` | Turso authentication token |
+
+```bash
+# Deploy to production
+vercel deploy --prod
+```
+
+The GitHub repo is connected — pushing to `main` triggers automatic deployments.
 
 ## Routes
 
@@ -45,7 +82,9 @@ The app runs at **http://localhost:3000** (or set `PORT` env variable).
 
 ## Data
 
-SQLite database stored at `data/vibetracker.db`. Created automatically on first run with seed data (default event settings + 10 rubric criteria).
+The database is powered by [Turso](https://turso.tech) (libSQL), a SQLite-compatible edge database. Locally, it falls back to a SQLite file at `data/vibetracker.db`.
+
+Tables are created automatically on first run and seeded with sample data (default event settings, 10 rubric criteria, 3 sample teams with scores, and 2 announcements).
 
 ## API Endpoints
 
@@ -70,7 +109,35 @@ SQLite database stored at `data/vibetracker.db`. Created automatically on first 
 ## Tests
 
 ```bash
-npm test
+pnpm test
 ```
 
 Covers scoring math, status computation, and ranking/tie-break logic.
+
+## Project Structure
+
+```
+VibeTracker/
+├── api/
+│   └── index.js          # Vercel serverless entry point
+├── db/
+│   └── database.js       # Turso/libSQL database layer
+├── lib/
+│   └── scoring.js        # Score computation & ranking logic
+├── public/
+│   ├── css/style.css     # Application styles
+│   ├── js/               # Client-side JavaScript (SPA)
+│   └── index.html        # Main HTML shell
+├── routes/
+│   ├── announcements.js  # Announcements CRUD
+│   ├── rubric.js         # Rubric criteria management
+│   ├── scores.js         # Score entry & leaderboard
+│   ├── settings.js       # Event configuration
+│   └── teams.js          # Team management
+├── tests/
+│   └── scoring.test.js   # Unit tests
+├── server.js             # Express app
+├── vercel.json           # Vercel deployment config
+├── .npmrc                # pnpm config (hoisted for Vercel)
+└── package.json
+```

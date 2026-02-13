@@ -31,9 +31,14 @@ app.use((err, req, res, next) => {
     res.status(500).json({ errors: ['Internal server error'] });
 });
 
-app.listen(PORT, () => {
-    console.log(`VibeTracker running at http://localhost:${PORT}`);
-    console.log(`  /setup  — Configure event`);
-    console.log(`  /score  — Enter scores`);
-    console.log(`  /tv     — Leaderboard (TV mode)`);
-});
+// Only listen when run directly (not when imported by Vercel)
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`VibeTracker running at http://localhost:${PORT}`);
+        console.log(`  /setup  — Configure event`);
+        console.log(`  /score  — Enter scores`);
+        console.log(`  /tv     — Leaderboard (TV mode)`);
+    });
+}
+
+module.exports = app;

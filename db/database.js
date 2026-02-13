@@ -1,46 +1,47 @@
-const initSqlJs = require('sql.js');
-const path = require('path');
-const fs = require('fs');
+const { createClient } = require('@libsql/client');
 
-const DB_PATH = path.join(__dirname, '..', 'data', 'vibetracker.db');
 let db = null;
-let initPromise = null;
+let initialized = false;
 
-async function getDb() {
+function getClient() {
   if (db) return db;
-  if (initPromise) return initPromise;
 
-  initPromise = (async () => {
-    const SQL = await initSqlJs();
-    const dataDir = path.dirname(DB_PATH);
+  // Turso (production) or local SQLite file
+  if (process.env.TURSO_DATABASE_URL) {
+    db = createClient({
+      url: process.env.TURSO_DATABASE_URL,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    });
+  } else {
+    // Local dev: use a local SQLite file via libsql
+    const path = require('path');
+    const fs = require('fs');
+    const dataDir = path.join(__dirname, '..', 'data');
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
+    db = createClient({
+      url: 'file:' + path.join(dataDir, 'vibetracker.db'),
+    });
+  }
 
-    if (fs.existsSync(DB_PATH)) {
-      const buffer = fs.readFileSync(DB_PATH);
-      db = new SQL.Database(buffer);
-    } else {
-      db = new SQL.Database();
-    }
-
-    initialize(db);
-    save();
-    return db;
-  })();
-
-  return initPromise;
+  return db;
 }
 
-function save() {
-  if (!db) return;
-  const data = db.export();
-  const buffer = Buffer.from(data);
-  fs.writeFileSync(DB_PATH, buffer);
+async function getDb() {
+  const client = getClient();
+  if (!initialized) {
+    await initialize(client);
+    initialized = true;
+  }
+  return client;
 }
 
-function initialize(db) {
-  db.run(`
+// save() is a no-op now — Turso persists automatically
+function save() { }
+
+async function initialize(db) {
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS EventSettings (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       eventName TEXT NOT NULL DEFAULT 'Hackathon',
@@ -54,7 +55,7 @@ function initialize(db) {
     )
   `);
 
-  db.run(`
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS Team (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       teamName TEXT NOT NULL UNIQUE,
@@ -68,7 +69,7 @@ function initialize(db) {
     )
   `);
 
-  db.run(`
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS RubricCategory (
       id INTEGER PRIMARY KEY CHECK (id BETWEEN 1 AND 10),
       groupName TEXT NOT NULL,
@@ -77,7 +78,7 @@ function initialize(db) {
     )
   `);
 
-  db.run(`
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS Score (
       teamId INTEGER PRIMARY KEY,
       c1 INTEGER, c2 INTEGER, c3 INTEGER, c4 INTEGER, c5 INTEGER,
@@ -87,7 +88,7 @@ function initialize(db) {
     )
   `);
 
-  db.run(`
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS Announcement (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
@@ -99,18 +100,21 @@ function initialize(db) {
     )
   `);
 
-  db.run('PRAGMA foreign_keys = ON');
+  await db.execute('PRAGMA foreign_keys = ON');
 
   // Seed EventSettings if empty
-  const settingsCount = db.exec('SELECT COUNT(*) as cnt FROM EventSettings');
-  if (settingsCount[0].values[0][0] === 0) {
-    db.run(`INSERT INTO EventSettings (id, eventName, eventIcon, scoringLocked, showPartial, tvRefreshSeconds, updatedAt)
-            VALUES (1, 'Hackathon', ?, 0, 1, 15, datetime('now'))`, ['\u26a1']);
+  const settingsCount = await db.execute('SELECT COUNT(*) as cnt FROM EventSettings');
+  if (settingsCount.rows[0].cnt === 0) {
+    await db.execute({
+      sql: `INSERT INTO EventSettings (id, eventName, eventIcon, scoringLocked, showPartial, tvRefreshSeconds, updatedAt)
+            VALUES (1, 'Hackathon', ?, 0, 1, 15, datetime('now'))`,
+      args: ['\u26a1'],
+    });
   }
 
   // Seed RubricCategory if empty
-  const rubricCount = db.exec('SELECT COUNT(*) as cnt FROM RubricCategory');
-  if (rubricCount[0].values[0][0] === 0) {
+  const rubricCount = await db.execute('SELECT COUNT(*) as cnt FROM RubricCategory');
+  if (rubricCount.rows[0].cnt === 0) {
     const defaultRubric = [
       [1, 'Business', 'Problem importance', '1: unclear / low relevance · 10: high-priority pain point with clear stakeholders'],
       [2, 'Business', 'Value & ROI', '1: no measurable benefit · 10: quantified benefit (cost, risk reduction, revenue, productivity) + credible assumptions'],
@@ -124,14 +128,16 @@ function initialize(db) {
       [10, 'Technical', 'Ship-ability (operational readiness)', '1: cannot be handed off · 10: runbook/README, deployment path, logging/monitoring notes, cost awareness'],
     ];
     for (const [id, groupName, name, guidance] of defaultRubric) {
-      db.run('INSERT INTO RubricCategory (id, groupName, name, guidance) VALUES (?, ?, ?, ?)',
-        [id, groupName, name, guidance]);
+      await db.execute({
+        sql: 'INSERT INTO RubricCategory (id, groupName, name, guidance) VALUES (?, ?, ?, ?)',
+        args: [id, groupName, name, guidance],
+      });
     }
   }
 
   // Seed Sample Teams if empty
-  const teamCount = db.exec('SELECT COUNT(*) as cnt FROM Team');
-  if (teamCount[0].values[0][0] === 0) {
+  const teamCount = await db.execute('SELECT COUNT(*) as cnt FROM Team');
+  if (teamCount.rows[0].cnt === 0) {
     const sampleTeams = [
       {
         name: 'ChronoShift',
@@ -157,28 +163,35 @@ function initialize(db) {
     ];
 
     for (const t of sampleTeams) {
-      db.run(`INSERT INTO Team (teamName, projectName, description, membersText, repoUrl, createdAt, updatedAt)
+      await db.execute({
+        sql: `INSERT INTO Team (teamName, projectName, description, membersText, repoUrl, createdAt, updatedAt)
               VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-        [t.name, t.project, t.desc, t.members, t.repo]);
+        args: [t.name, t.project, t.desc, t.members, t.repo],
+      });
     }
   }
 
   // Seed Sample Announcements if empty
-  const annCount = db.exec('SELECT COUNT(*) as cnt FROM Announcement');
-  if (annCount[0].values[0][0] === 0) {
-    db.run(`INSERT INTO Announcement (title, body, published, pinned, createdAt, updatedAt)
+  const annCount = await db.execute('SELECT COUNT(*) as cnt FROM Announcement');
+  if (annCount.rows[0].cnt === 0) {
+    await db.execute({
+      sql: `INSERT INTO Announcement (title, body, published, pinned, createdAt, updatedAt)
             VALUES (?, ?, 1, 1, datetime('now'), datetime('now'))`,
-      ['🚀 Kickoff!', 'Welcome to the Global Hackathon 2026! **Happy Hacking!**\n\n- Coding starts now\n- Mentors available in the lounge']);
+      args: ['🚀 Kickoff!', 'Welcome to the Global Hackathon 2026! **Happy Hacking!**\n\n- Coding starts now\n- Mentors available in the lounge'],
+    });
 
-    db.run(`INSERT INTO Announcement (title, body, published, pinned, createdAt, updatedAt)
+    await db.execute({
+      sql: `INSERT INTO Announcement (title, body, published, pinned, createdAt, updatedAt)
             VALUES (?, ?, 1, 1, datetime('now'), datetime('now'))`,
-      ['🍕 Lunch Arrived', 'Pizza and salads are now available in the **Main Hall**.\n\nPlease take a break and fuel up!']);
+      args: ['🍕 Lunch Arrived', 'Pizza and salads are now available in the **Main Hall**.\n\nPlease take a break and fuel up!'],
+    });
   }
 
   // Seed sample scores
-  const scoreCount = db.exec('SELECT COUNT(*) as cnt FROM Score');
-  if (scoreCount[0].values[0][0] === 0) {
-    const teams = allRows(db, 'SELECT id, teamName FROM Team');
+  const scoreCount = await db.execute('SELECT COUNT(*) as cnt FROM Score');
+  if (scoreCount.rows[0].cnt === 0) {
+    const teamsResult = await db.execute('SELECT id, teamName FROM Team');
+    const teams = teamsResult.rows;
     const scores = [
       { name: 'ChronoShift', vals: [8, 9, 7, 8, 6, 7, 8, 9, 8, 7] },
       { name: 'EcoVibe', vals: [6, 7, 8, 6, 5, 9, 8, 7, 9, 8] },
@@ -188,9 +201,11 @@ function initialize(db) {
     for (const s of scores) {
       const team = teams.find(t => t.teamName === s.name);
       if (team) {
-        db.run(`INSERT INTO Score (teamId, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, updatedAt)
+        await db.execute({
+          sql: `INSERT INTO Score (teamId, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, updatedAt)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-          [team.id, ...s.vals]);
+          args: [team.id, ...s.vals],
+        });
       }
     }
   }
@@ -198,51 +213,34 @@ function initialize(db) {
 
 /**
  * Execute a SELECT query and return rows as an array of plain objects.
- * Uses db.exec (which returns {columns, values}) and maps to objects.
+ * Compatible with both @libsql/client result format.
  */
-function allRows(db, sql, params = []) {
-  let result;
-  if (params.length > 0) {
-    const stmt = db.prepare(sql);
-    stmt.bind(params);
-    const rows = [];
-    const columns = [];
-    let gotColumns = false;
-    while (stmt.step()) {
-      const row = stmt.getAsObject();
-      rows.push(row);
-    }
-    stmt.free();
-    return rows;
-  } else {
-    result = db.exec(sql);
-    if (!result || result.length === 0) return [];
-    const { columns, values } = result[0];
-    return values.map(row => {
-      const obj = {};
-      columns.forEach((col, i) => { obj[col] = row[i]; });
-      return obj;
-    });
-  }
+async function allRows(db, sql, params = []) {
+  const result = await db.execute({ sql, args: params });
+  return result.rows.map(row => ({ ...row }));
 }
 
 /**
  * Get a single row as a plain object, or null if not found.
  */
-function getRow(db, sql, params = []) {
-  const rows = allRows(db, sql, params);
-  return rows.length > 0 ? rows[0] : null;
+async function getRow(db, sql, params = []) {
+  const result = await db.execute({ sql, args: params });
+  return result.rows.length > 0 ? { ...result.rows[0] } : null;
 }
 
 /**
- * Get the last insert rowid.
+ * Execute a write statement (INSERT, UPDATE, DELETE).
+ * Returns the result including lastInsertRowid.
  */
-function lastInsertId(db) {
-  const result = db.exec('SELECT last_insert_rowid() as id');
-  if (result && result.length > 0) {
-    return result[0].values[0][0];
-  }
-  return null;
+async function execute(db, sql, params = []) {
+  return await db.execute({ sql, args: params });
 }
 
-module.exports = { getDb, save, allRows, getRow, lastInsertId };
+/**
+ * Get the last insert rowid from an execute result.
+ */
+function lastInsertId(result) {
+  return Number(result.lastInsertRowid);
+}
+
+module.exports = { getDb, save, allRows, getRow, execute, lastInsertId };

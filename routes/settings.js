@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { getDb, save, getRow } = require('../db/database');
+const { getDb, getRow } = require('../db/database');
 
 // GET /api/settings
 router.get('/', async (req, res) => {
     try {
         const db = await getDb();
-        const row = getRow(db, 'SELECT * FROM EventSettings WHERE id = 1');
+        const row = await getRow(db, 'SELECT * FROM EventSettings WHERE id = 1');
         res.json({
             eventName: row.eventName,
             eventIcon: row.eventIcon || '⚡',
@@ -54,11 +54,10 @@ router.put('/', async (req, res) => {
         sets.push("updatedAt = datetime('now')");
 
         if (sets.length > 1) {
-            db.run(`UPDATE EventSettings SET ${sets.join(', ')} WHERE id = 1`, params);
-            save();
+            await db.execute({ sql: `UPDATE EventSettings SET ${sets.join(', ')} WHERE id = 1`, args: params });
         }
 
-        const row = getRow(db, 'SELECT * FROM EventSettings WHERE id = 1');
+        const row = await getRow(db, 'SELECT * FROM EventSettings WHERE id = 1');
         res.json({
             eventName: row.eventName,
             eventIcon: row.eventIcon || '⚡',
