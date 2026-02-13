@@ -6,6 +6,9 @@ async function ScorePage(app) {
   let settings = {};
   let currentTeamId = null;
 
+  const PROJECT_STATUSES = ['Planning', 'Design', 'Coding', 'Testing', 'Deployed!'];
+  const PROJECT_STATUS_ICONS = { 'Planning': '📋', 'Design': '🎨', 'Coding': '💻', 'Testing': '🧪', 'Deployed!': '🚀' };
+
   try {
     [rubric, settings] = await Promise.all([
       API.getRubric(),
@@ -57,17 +60,20 @@ async function ScorePage(app) {
     const tilesEl = document.getElementById('team-tiles');
     tilesEl.innerHTML = teams.map(t => {
       const sd = scoreData[t.id];
-      const status = sd ? sd.status : 'Not Scored';
+      const status = sd ? sd.scoreStatus : (t.scoreStatus || 'In Progress');
+      const projStatus = sd ? sd.projectStatus : (t.projectStatus || 'Planning');
       const total = sd ? sd.total : '—';
       const members = t.members || [];
       const isActive = t.id === currentTeamId;
+      const projIcon = PROJECT_STATUS_ICONS[projStatus] || '📋';
       return `
         <div class="team-tile ${isActive ? 'team-tile-active' : ''} ${status === 'Complete' ? 'team-tile-complete' : ''}" data-team-id="${t.id}">
           <div class="team-tile-header">
             <div class="team-tile-name">${esc(t.teamName)}</div>
-            <span class="badge ${status === 'Complete' ? 'badge-success' : status === 'Partial' ? 'badge-warning' : 'badge-accent'}">${status}</span>
+            <span class="badge ${status === 'Complete' ? 'badge-success' : 'badge-warning'}">${status}</span>
           </div>
           <div class="team-tile-project">${esc(t.projectName)}</div>
+          <div class="project-status-pill project-status-${projStatus.toLowerCase().replace('!', '')}">${projIcon} ${projStatus}</div>
           ${t.description ? `<div class="team-tile-desc">${esc(t.description)}</div>` : ''}
           <div class="team-tile-footer">
             <div class="team-tile-members">${members.slice(0, 4).map(m => esc(m)).join(', ')}${members.length > 4 ? ` +${members.length - 4}` : ''}</div>
@@ -94,6 +100,9 @@ async function ScorePage(app) {
   async function loadTeamScores(teamId) {
     const team = teams.find(t => t.id === teamId);
     const score = await API.getTeamScore(teamId);
+    // Get current statuses from scoreData cache or team
+    const currentScoreStatus = (scoreData[teamId] && scoreData[teamId].scoreStatus) || team.scoreStatus || 'In Progress';
+    const currentProjectStatus = (scoreData[teamId] && scoreData[teamId].projectStatus) || team.projectStatus || 'Planning';
     const members = team.members || [];
 
     // Team detail panel
@@ -113,13 +122,64 @@ async function ScorePage(app) {
           <div style="text-align:right">
             ${team.repoUrl ? `<a href="${esc(team.repoUrl)}" class="link-chip" target="_blank" style="margin-bottom:0.25rem;display:inline-flex">🔗 Repo</a>` : ''}
             ${team.demoUrl ? `<a href="${esc(team.demoUrl)}" class="link-chip" target="_blank" style="display:inline-flex">🌐 Demo</a>` : ''}
-            <div style="margin-top:0.5rem">
-              <span class="badge ${score.status === 'Complete' ? 'badge-success' : 'badge-warning'}">${score.status}</span>
-            </div>
           </div>
+        </div>
+
+        <!-- Project Status Stepper -->
+        <div class="status-section">
+          <div class="status-label">Project Status</div>
+          <div class="project-status-stepper" id="project-stepper">
+            ${PROJECT_STATUSES.map(s => {
+      const icon = PROJECT_STATUS_ICONS[s];
+      const isActive = s === currentProjectStatus;
+      const idx = PROJECT_STATUSES.indexOf(s);
+      const currentIdx = PROJECT_STATUSES.indexOf(currentProjectStatus);
+      const isPast = idx < currentIdx;
+      return `<button class="stepper-step ${isActive ? 'stepper-active' : ''} ${isPast ? 'stepper-past' : ''}" data-status="${s}">
+                <span class="stepper-icon">${icon}</span>
+                <span class="stepper-text">${s}</span>
+              </button>`;
+    }).join('<span class="stepper-arrow">→</span>')}
+          </div>
+        </div>
+
+        <!-- Score Status Toggle -->
+        <div class="status-section">
+          <div class="status-label">Scoring Status</div>
+          <button class="score-status-toggle ${currentScoreStatus === 'Complete' ? 'score-status-complete' : 'score-status-progress'}" id="score-status-btn">
+            <span class="score-status-icon">${currentScoreStatus === 'Complete' ? '✅' : '⏳'}</span>
+            <span class="score-status-text">${currentScoreStatus}</span>
+          </button>
         </div>
       </div>
     `;
+
+    // Project status stepper clicks
+    detailPanel.querySelectorAll('.stepper-step').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const newStatus = btn.dataset.status;
+        try {
+          await API.updateTeamStatus(teamId, { projectStatus: newStatus });
+          if (scoreData[teamId]) scoreData[teamId].projectStatus = newStatus;
+          team.projectStatus = newStatus;
+          renderTiles();
+          await loadTeamScores(teamId);
+        } catch (e) { showToast('Failed to update project status', 'error'); }
+      });
+    });
+
+    // Score status toggle click
+    const statusBtn = document.getElementById('score-status-btn');
+    statusBtn.addEventListener('click', async () => {
+      const newStatus = currentScoreStatus === 'Complete' ? 'In Progress' : 'Complete';
+      try {
+        await API.updateTeamStatus(teamId, { scoreStatus: newStatus });
+        if (scoreData[teamId]) scoreData[teamId].scoreStatus = newStatus;
+        team.scoreStatus = newStatus;
+        renderTiles();
+        await loadTeamScores(teamId);
+      } catch (e) { showToast('Failed to update score status', 'error'); }
+    });
 
     // Score form
     const formPanel = document.getElementById('score-form-panel');

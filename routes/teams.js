@@ -43,6 +43,13 @@ async function validateTeam(body, db, sessionKey, excludeId) {
         }
     }
 
+    if (body.projectStatus) {
+        const validStatuses = ['Planning', 'Design', 'Coding', 'Testing', 'Deployed!'];
+        if (!validStatuses.includes(body.projectStatus)) {
+            errors.push('Invalid projectStatus');
+        }
+    }
+
     return errors;
 }
 
@@ -75,14 +82,16 @@ router.post('/', async (req, res) => {
         const errors = await validateTeam(req.body, db, req.sessionKey);
         if (errors.length) return res.status(400).json({ errors });
 
-        const { teamName, projectName, membersText, repoUrl, demoUrl, description } = req.body;
+        const { teamName, projectName, membersText, repoUrl, demoUrl, description, projectStatus } = req.body;
+        const status = projectStatus || 'Planning';
         await db.execute({
-            sql: `INSERT INTO Team (sessionKey, teamName, projectName, membersText, repoUrl, demoUrl, description, createdAt, updatedAt)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+            sql: `INSERT INTO Team (sessionKey, teamName, projectName, membersText, repoUrl, demoUrl, description, projectStatus, createdAt, updatedAt)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
             args: [
                 req.sessionKey,
                 teamName.trim(), projectName.trim(), membersText,
-                (repoUrl || '').trim(), (demoUrl || '').trim(), (description || '').trim()
+                (repoUrl || '').trim(), (demoUrl || '').trim(), (description || '').trim(),
+                status
             ],
         });
 
@@ -106,13 +115,16 @@ router.put('/:id', async (req, res) => {
         const errors = await validateTeam(req.body, db, req.sessionKey, id);
         if (errors.length) return res.status(400).json({ errors });
 
-        const { teamName, projectName, membersText, repoUrl, demoUrl, description } = req.body;
+        const { teamName, projectName, membersText, repoUrl, demoUrl, description, projectStatus } = req.body;
+        const status = projectStatus || existing.projectStatus || 'Planning'; // Keep existing if not provided, or default
+
         await db.execute({
-            sql: `UPDATE Team SET teamName=?, projectName=?, membersText=?, repoUrl=?, demoUrl=?, description=?, updatedAt=datetime('now')
+            sql: `UPDATE Team SET teamName=?, projectName=?, membersText=?, repoUrl=?, demoUrl=?, description=?, projectStatus=?, updatedAt=datetime('now')
                   WHERE id=? AND sessionKey=?`,
             args: [
                 teamName.trim(), projectName.trim(), membersText,
                 (repoUrl || '').trim(), (demoUrl || '').trim(), (description || '').trim(),
+                status,
                 id, req.sessionKey
             ],
         });

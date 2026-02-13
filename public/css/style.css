@@ -1691,3 +1691,177 @@ body.landing-mode #app {
     font-size: 2.25rem;
   }
 }
+
+/* ============ Project Status Pill ============ */
+.project-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  margin-top: 0.4rem;
+  letter-spacing: 0.02em;
+}
+
+.project-status-planning {
+  background: rgba(96, 165, 250, 0.15);
+  color: #60a5fa;
+}
+
+.project-status-design {
+  background: rgba(192, 132, 252, 0.15);
+  color: #c084fc;
+}
+
+.project-status-coding {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+}
+
+.project-status-testing {
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+}
+
+.project-status-deployed {
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+}
+
+/* ============ Status Section ============ */
+.status-section {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.status-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+}
+
+/* ============ Project Status Stepper ============ */
+.project-status-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.stepper-step {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.stepper-step:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+
+.stepper-step.stepper-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
+}
+
+.stepper-step.stepper-past {
+  border-color: rgb(52, 211, 153, 0.3);
+  background: rgba(52, 211, 153, 0.08);
+  color: #34d399;
+}
+
+.stepper-icon {
+  font-size: 0.9rem;
+}
+
+.stepper-text {
+  font-size: 0.78rem;
+}
+
+.stepper-arrow {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  opacity: 0.5;
+}
+
+/* ============ Score Status Toggle ============ */
+.score-status-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: var(--transition);
+}
+
+.score-status-progress {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.3);
+  color: #fbbf24;
+}
+
+.score-status-progress:hover {
+  background: rgba(251, 191, 36, 0.18);
+  border-color: #fbbf24;
+}
+
+.score-status-complete {
+  background: rgba(52, 211, 153, 0.1);
+  border-color: rgba(52, 211, 153, 0.3);
+  color: #34d399;
+}
+
+.score-status-complete:hover {
+  background: rgba(52, 211, 153, 0.18);
+  border-color: #34d399;
+}
+
+.score-status-icon {
+  font-size: 1rem;
+}
+
+.score-status-text {
+  font-size: 0.85rem;
+}
+
+@media (max-width: 700px) {
+  .project-status-stepper {
+    gap: 0.15rem;
+  }
+
+  .stepper-step {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.7rem;
+  }
+
+  .stepper-text {
+    display: none;
+  }
+
+  .stepper-arrow {
+    display: none;
+  }
+}

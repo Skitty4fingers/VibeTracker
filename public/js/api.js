@@ -62,6 +62,13 @@ const API = {
     getScores: () => API.get('/api/scores'),
     getTeamScore: (teamId) => API.get(`/api/scores/${teamId}`),
     updateScore: (teamId, data) => API.put(`/api/scores/${teamId}`, data),
+    updateTeamStatus: (teamId, data) => {
+        return fetch(`/api/scores/${teamId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        }).then(async r => { const j = await r.json(); if (!r.ok) throw j; return j; });
+    },
 
     // Announcements
     getAnnouncements: (published) => {

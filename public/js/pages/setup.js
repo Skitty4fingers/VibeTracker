@@ -36,6 +36,8 @@ async function SetupPage(app) {
     '⚙️', '🔒', '🎪', '🎸', '🏁',
   ];
 
+  const PROJECT_STATUS_ICONS = { 'Planning': '📋', 'Design': '🎨', 'Coding': '💻', 'Testing': '🧪', 'Deployed!': '🚀' };
+
   await Promise.all([
     loadSettings(),
     loadTeams(),
@@ -179,10 +181,18 @@ async function SetupPage(app) {
   function createTeamItem(team) {
     const div = document.createElement('div');
     div.className = 'team-list-item';
+    const projStatus = team.projectStatus || 'Planning';
+    const projIcon = PROJECT_STATUS_ICONS[projStatus] || '📋';
+    const statusClass = `project-status-${projStatus.toLowerCase().replace('!', '')}`;
+
     div.innerHTML = `
       <div class="team-list-info">
         <div class="team-list-name">${esc(team.teamName)}</div>
-        <div class="team-list-project">${esc(team.projectName)} <span class="badge badge-accent" style="margin-left:0.5rem">${team.memberCount} member${team.memberCount !== 1 ? 's' : ''}</span></div>
+        <div class="team-list-project">
+          ${esc(team.projectName)} 
+          <span class="badge badge-accent" style="margin-left:0.5rem">${team.memberCount} member${team.memberCount !== 1 ? 's' : ''}</span>
+          <span class="project-status-pill ${statusClass}" style="margin:0 0 0 0.5rem;font-size:0.65rem;padding:0.15rem 0.5rem">${projIcon} ${esc(projStatus)}</span>
+        </div>
         ${team.repoUrl ? `<a href="${esc(team.repoUrl)}" class="link-chip" target="_blank">Repo</a>` : ''}
         ${team.demoUrl ? `<a href="${esc(team.demoUrl)}" class="link-chip" target="_blank">Demo</a>` : ''}
       </div>
@@ -221,6 +231,13 @@ async function SetupPage(app) {
           <input type="text" class="form-input" id="modal-projectName" value="${isEdit ? esc(team.projectName) : ''}" maxlength="80" placeholder="e.g. SmartWidget AI">
         </div>
         <div class="form-group">
+          <label class="form-label">Project Status</label>
+          <select class="form-input" id="modal-projectStatus" style="height:auto;padding:0.6rem">
+            ${['Planning', 'Design', 'Coding', 'Testing', 'Deployed!'].map(s =>
+      `<option value="${s}" ${(!isEdit && s === 'Planning') || (isEdit && team.projectStatus === s) ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
           <label class="form-label">Members * <span style="font-weight:400;color:var(--text-muted)">(one per line, 1–15)</span></label>
           <textarea class="form-textarea" id="modal-members" placeholder="Alice Johnson&#10;Bob Smith&#10;Charlie Lee">${isEdit ? esc(team.membersText) : ''}</textarea>
         </div>
@@ -253,6 +270,7 @@ async function SetupPage(app) {
       const data = {
         teamName: document.getElementById('modal-teamName').value,
         projectName: document.getElementById('modal-projectName').value,
+        projectStatus: document.getElementById('modal-projectStatus').value,
         membersText: document.getElementById('modal-members').value,
         repoUrl: document.getElementById('modal-repoUrl').value,
         demoUrl: document.getElementById('modal-demoUrl').value,

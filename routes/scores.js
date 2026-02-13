@@ -26,6 +26,8 @@ router.get('/', async (req, res) => {
                 memberCount: members.length,
                 repoUrl: team.repoUrl,
                 demoUrl: team.demoUrl,
+                scoreStatus: team.scoreStatus || 'In Progress',
+                projectStatus: team.projectStatus || 'Planning',
                 c1: scoreData.c1, c2: scoreData.c2, c3: scoreData.c3, c4: scoreData.c4, c5: scoreData.c5,
                 c6: scoreData.c6, c7: scoreData.c7, c8: scoreData.c8, c9: scoreData.c9, c10: scoreData.c10,
                 ...computed,
@@ -121,6 +123,52 @@ router.put('/:teamId', async (req, res) => {
         res.json({ teamId, ...scores, ...computed });
     } catch (e) {
         console.error('PUT /api/scores/:teamId error:', e);
+        res.status(500).json({ errors: ['Internal server error'] });
+    }
+});
+
+// PATCH /api/scores/:teamId/status — toggle scoreStatus or set projectStatus
+router.patch('/:teamId/status', async (req, res) => {
+    try {
+        const db = await getDb();
+        const teamId = parseInt(req.params.teamId, 10);
+        const team = await getRow(db, 'SELECT * FROM Team WHERE id = ? AND sessionKey = ?', [teamId, req.sessionKey]);
+        if (!team) return res.status(404).json({ errors: ['Team not found'] });
+
+        const { scoreStatus, projectStatus } = req.body;
+        const sets = [];
+        const params = [];
+
+        if (scoreStatus != null) {
+            const validScoreStatuses = ['In Progress', 'Complete'];
+            if (!validScoreStatuses.includes(scoreStatus)) {
+                return res.status(400).json({ errors: ['scoreStatus must be "In Progress" or "Complete"'] });
+            }
+            sets.push('scoreStatus = ?');
+            params.push(scoreStatus);
+        }
+
+        if (projectStatus != null) {
+            const validProjectStatuses = ['Planning', 'Design', 'Coding', 'Testing', 'Deployed!'];
+            if (!validProjectStatuses.includes(projectStatus)) {
+                return res.status(400).json({ errors: ['Invalid projectStatus'] });
+            }
+            sets.push('projectStatus = ?');
+            params.push(projectStatus);
+        }
+
+        if (sets.length === 0) {
+            return res.status(400).json({ errors: ['No status fields provided'] });
+        }
+
+        sets.push("updatedAt = datetime('now')");
+        params.push(teamId, req.sessionKey);
+        await db.execute({ sql: `UPDATE Team SET ${sets.join(', ')} WHERE id = ? AND sessionKey = ?`, args: params });
+
+        const updated = await getRow(db, 'SELECT * FROM Team WHERE id = ? AND sessionKey = ?', [teamId, req.sessionKey]);
+        res.json({ scoreStatus: updated.scoreStatus, projectStatus: updated.projectStatus });
+    } catch (e) {
+        console.error('PATCH /api/scores/:teamId/status error:', e);
         res.status(500).json({ errors: ['Internal server error'] });
     }
 });

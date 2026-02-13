@@ -8,6 +8,7 @@ async function TvPage(app) {
   let pageCount = 1;
   let currentSettings = null; // Store settings for clock update
   const TEAMS_PER_PAGE = 8;
+  const PROJECT_STATUS_ICONS = { 'Planning': '📋', 'Design': '🎨', 'Coding': '💻', 'Testing': '🧪', 'Deployed!': '🚀' };
 
   // Full-screen container
   app.innerHTML = `<div class="tv-container" id="tv-root"></div>`;
@@ -64,8 +65,8 @@ async function TvPage(app) {
       let displayTeams = teams;
       let inProgressTeams = [];
       if (!showPartial) {
-        displayTeams = teams.filter(t => t.status === 'Complete');
-        inProgressTeams = teams.filter(t => t.status === 'Partial');
+        displayTeams = teams.filter(t => t.scoreStatus === 'Complete');
+        inProgressTeams = teams.filter(t => t.scoreStatus !== 'Complete');
       }
 
       // Pagination
@@ -119,7 +120,11 @@ async function TvPage(app) {
                 <tr><td colspan="${showPartial ? 8 : 7}" style="text-align:center;padding:3rem;color:var(--text-muted)">
                   No teams to display
                 </td></tr>
-              ` : pageTeams.map(team => `
+              ` : pageTeams.map(team => {
+        const projStatus = team.projectStatus || 'Planning';
+        const projIcon = PROJECT_STATUS_ICONS[projStatus] || '📋';
+        const statusClass = `project-status-${projStatus.toLowerCase().replace('!', '')}`;
+        return `
                 <tr>
                   <td class="rank-cell">
                     <span class="tv-rank ${team.rank <= 3 ? `tv-rank-${team.rank}` : 'tv-rank-other'}">${team.rank}</span>
@@ -129,6 +134,7 @@ async function TvPage(app) {
                   </td>
                   <td>
                     <div class="tv-project-name">${esc(team.projectName)}</div>
+                    <div class="project-status-pill ${statusClass}" style="margin-bottom:0.3rem">${projIcon} ${esc(projStatus)}</div>
                     ${team.description ? `<div class="tv-project-desc">${esc(team.description)}</div>` : ''}
                   </td>
                   <td>
@@ -137,9 +143,9 @@ async function TvPage(app) {
                   <td class="tv-score">${team.businessSubtotal}</td>
                   <td class="tv-score">${team.technicalSubtotal}</td>
                   <td class="tv-score tv-total">${team.total}</td>
-                  ${showPartial ? `<td style="text-align:center"><span class="badge ${team.status === 'Complete' ? 'badge-success' : 'badge-warning'}">${team.status}</span></td>` : ''}
+                  ${showPartial ? `<td style="text-align:center"><span class="badge ${team.scoreStatus === 'Complete' ? 'badge-success' : 'badge-warning'}">${team.scoreStatus}</span></td>` : ''}
                 </tr>
-              `).join('')}
+              `}).join('')}
             </tbody>
           </table>
         </div>

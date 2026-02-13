@@ -63,6 +63,21 @@ async function createTables(db) {
     // Table doesn't exist yet, which is fine
   }
 
+  // Migration: add scoreStatus and projectStatus to Team if missing
+  try {
+    const teamInfo = await db.execute("PRAGMA table_info(Team)");
+    if (teamInfo.rows.length > 0) {
+      const hasScoreStatus = teamInfo.rows.some(r => r.name === 'scoreStatus');
+      if (!hasScoreStatus) {
+        console.log('Migrating Team table: adding scoreStatus and projectStatus...');
+        await db.execute("ALTER TABLE Team ADD COLUMN scoreStatus TEXT NOT NULL DEFAULT 'In Progress'");
+        await db.execute("ALTER TABLE Team ADD COLUMN projectStatus TEXT NOT NULL DEFAULT 'Planning'");
+      }
+    }
+  } catch (e) {
+    // Table doesn't exist yet, which is fine
+  }
+
   await db.execute(`
     CREATE TABLE IF NOT EXISTS Session (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -97,6 +112,8 @@ async function createTables(db) {
       repoUrl TEXT DEFAULT '',
       demoUrl TEXT DEFAULT '',
       description TEXT DEFAULT '',
+      scoreStatus TEXT NOT NULL DEFAULT 'In Progress',
+      projectStatus TEXT NOT NULL DEFAULT 'Planning',
       createdAt TEXT NOT NULL DEFAULT (datetime('now')),
       updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (sessionKey) REFERENCES Session(sessionKey) ON DELETE CASCADE
@@ -202,11 +219,13 @@ async function createSession(db) {
     { name: 'EcoVibe', project: 'Carbon Footprint Tracker', desc: 'Real-time dashboard for tracking office energy consumption with IoT integration.', members: 'Diana Prince\nEvan Wright', repo: 'https://github.com/example/ecovibe' },
     { name: 'CodeFlow', project: 'Voice-First IDE', desc: 'Accessibility-focused IDE plugin allowing full coding control via voice commands.', members: 'Fiona Gallagher\nGeorge Hill\nHannah Lee', repo: 'https://github.com/example/codeflow' },
   ];
-  for (const t of sampleTeams) {
+  const sampleStatuses = ['Coding', 'Testing', 'Design'];
+  for (let i = 0; i < sampleTeams.length; i++) {
+    const t = sampleTeams[i];
     await db.execute({
-      sql: `INSERT INTO Team (sessionKey, teamName, projectName, description, membersText, repoUrl, createdAt, updatedAt)
-            VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-      args: [sessionKey, t.name, t.project, t.desc, t.members, t.repo],
+      sql: `INSERT INTO Team (sessionKey, teamName, projectName, description, membersText, repoUrl, scoreStatus, projectStatus, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, 'Complete', ?, datetime('now'), datetime('now'))`,
+      args: [sessionKey, t.name, t.project, t.desc, t.members, t.repo, sampleStatuses[i]],
     });
   }
 
