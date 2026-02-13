@@ -6,7 +6,7 @@ const { getDb, allRows } = require('../db/database');
 router.get('/', async (req, res) => {
     try {
         const db = await getDb();
-        const rows = await allRows(db, 'SELECT * FROM RubricCategory ORDER BY id');
+        const rows = await allRows(db, 'SELECT * FROM RubricCategory WHERE sessionKey = ? ORDER BY categoryIndex', [req.sessionKey]);
         res.json(rows);
     } catch (e) {
         console.error('GET /api/rubric error:', e);
@@ -26,7 +26,7 @@ router.put('/', async (req, res) => {
 
         const errors = [];
         for (const cat of categories) {
-            if (!cat.id || cat.id < 1 || cat.id > 10) errors.push(`Invalid category id: ${cat.id}`);
+            if (!cat.id) errors.push('Category id is required');
             if (!cat.name || typeof cat.name !== 'string' || cat.name.trim().length === 0) {
                 errors.push(`Category ${cat.id}: name is required`);
             }
@@ -35,12 +35,12 @@ router.put('/', async (req, res) => {
 
         for (const item of categories) {
             await db.execute({
-                sql: 'UPDATE RubricCategory SET name = ?, guidance = ? WHERE id = ?',
-                args: [item.name.trim(), (item.guidance || '').trim(), item.id],
+                sql: 'UPDATE RubricCategory SET name = ?, guidance = ? WHERE id = ? AND sessionKey = ?',
+                args: [item.name.trim(), (item.guidance || '').trim(), item.id, req.sessionKey],
             });
         }
 
-        const rows = await allRows(db, 'SELECT * FROM RubricCategory ORDER BY id');
+        const rows = await allRows(db, 'SELECT * FROM RubricCategory WHERE sessionKey = ? ORDER BY categoryIndex', [req.sessionKey]);
         res.json(rows);
     } catch (e) {
         console.error('PUT /api/rubric error:', e);

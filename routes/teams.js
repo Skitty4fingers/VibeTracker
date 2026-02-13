@@ -7,7 +7,7 @@ function parseMembers(text) {
     return text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 }
 
-async function validateTeam(body, db, excludeId) {
+async function validateTeam(body, db, sessionKey, excludeId) {
     const errors = [];
     const { teamName, projectName, membersText } = body;
 
@@ -16,7 +16,7 @@ async function validateTeam(body, db, excludeId) {
     } else if (teamName.trim().length > 60) {
         errors.push('teamName max 60 characters');
     } else {
-        const existing = await getRow(db, 'SELECT id FROM Team WHERE teamName = ?', [teamName.trim()]);
+        const existing = await getRow(db, 'SELECT id FROM Team WHERE teamName = ? AND sessionKey = ?', [teamName.trim(), sessionKey]);
         if (existing && existing.id !== excludeId) {
             errors.push('teamName must be unique');
         }
@@ -50,7 +50,7 @@ async function validateTeam(body, db, excludeId) {
 router.get('/', async (req, res) => {
     try {
         const db = await getDb();
-        const teams = await allRows(db, 'SELECT * FROM Team ORDER BY teamName');
+        const teams = await allRows(db, 'SELECT * FROM Team WHERE sessionKey = ? ORDER BY teamName', [req.sessionKey]);
         res.json(teams.map(t => ({
             ...t,
             members: parseMembers(t.membersText),
@@ -66,27 +66,28 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const db = await getDb();
-        const countResult = await db.execute('SELECT COUNT(*) as cnt FROM Team');
+        const countResult = await db.execute({ sql: 'SELECT COUNT(*) as cnt FROM Team WHERE sessionKey = ?', args: [req.sessionKey] });
         const teamCount = countResult.rows[0].cnt;
         if (teamCount >= 20) {
             return res.status(400).json({ errors: ['Maximum 20 teams allowed'] });
         }
 
-        const errors = await validateTeam(req.body, db);
+        const errors = await validateTeam(req.body, db, req.sessionKey);
         if (errors.length) return res.status(400).json({ errors });
 
         const { teamName, projectName, membersText, repoUrl, demoUrl, description } = req.body;
         await db.execute({
-            sql: `INSERT INTO Team (teamName, projectName, membersText, repoUrl, demoUrl, description, createdAt, updatedAt)
-                  VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+            sql: `INSERT INTO Team (sessionKey, teamName, projectName, membersText, repoUrl, demoUrl, description, createdAt, updatedAt)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
             args: [
+                req.sessionKey,
                 teamName.trim(), projectName.trim(), membersText,
                 (repoUrl || '').trim(), (demoUrl || '').trim(), (description || '').trim()
             ],
         });
 
-        // Get the newly inserted row by unique teamName
-        const team = await getRow(db, 'SELECT * FROM Team WHERE teamName = ?', [teamName.trim()]);
+        // Get the newly inserted row by unique teamName within session
+        const team = await getRow(db, 'SELECT * FROM Team WHERE teamName = ? AND sessionKey = ?', [teamName.trim(), req.sessionKey]);
         res.status(201).json({ ...team, members: parseMembers(team.membersText), memberCount: parseMembers(team.membersText).length });
     } catch (e) {
         console.error('POST /api/teams error:', e);
@@ -99,24 +100,24 @@ router.put('/:id', async (req, res) => {
     try {
         const db = await getDb();
         const id = parseInt(req.params.id, 10);
-        const existing = await getRow(db, 'SELECT * FROM Team WHERE id = ?', [id]);
+        const existing = await getRow(db, 'SELECT * FROM Team WHERE id = ? AND sessionKey = ?', [id, req.sessionKey]);
         if (!existing) return res.status(404).json({ errors: ['Team not found'] });
 
-        const errors = await validateTeam(req.body, db, id);
+        const errors = await validateTeam(req.body, db, req.sessionKey, id);
         if (errors.length) return res.status(400).json({ errors });
 
         const { teamName, projectName, membersText, repoUrl, demoUrl, description } = req.body;
         await db.execute({
             sql: `UPDATE Team SET teamName=?, projectName=?, membersText=?, repoUrl=?, demoUrl=?, description=?, updatedAt=datetime('now')
-                  WHERE id=?`,
+                  WHERE id=? AND sessionKey=?`,
             args: [
                 teamName.trim(), projectName.trim(), membersText,
                 (repoUrl || '').trim(), (demoUrl || '').trim(), (description || '').trim(),
-                id
+                id, req.sessionKey
             ],
         });
 
-        const team = await getRow(db, 'SELECT * FROM Team WHERE id = ?', [id]);
+        const team = await getRow(db, 'SELECT * FROM Team WHERE id = ? AND sessionKey = ?', [id, req.sessionKey]);
         res.json({ ...team, members: parseMembers(team.membersText), memberCount: parseMembers(team.membersText).length });
     } catch (e) {
         console.error('PUT /api/teams error:', e);
@@ -129,11 +130,11 @@ router.delete('/:id', async (req, res) => {
     try {
         const db = await getDb();
         const id = parseInt(req.params.id, 10);
-        const existing = await getRow(db, 'SELECT * FROM Team WHERE id = ?', [id]);
+        const existing = await getRow(db, 'SELECT * FROM Team WHERE id = ? AND sessionKey = ?', [id, req.sessionKey]);
         if (!existing) return res.status(404).json({ errors: ['Team not found'] });
 
         await db.execute({ sql: 'DELETE FROM Score WHERE teamId = ?', args: [id] });
-        await db.execute({ sql: 'DELETE FROM Team WHERE id = ?', args: [id] });
+        await db.execute({ sql: 'DELETE FROM Team WHERE id = ? AND sessionKey = ?', args: [id, req.sessionKey] });
         res.json({ success: true });
     } catch (e) {
         console.error('DELETE /api/teams error:', e);

@@ -6,7 +6,8 @@ const { getDb, getRow } = require('../db/database');
 router.get('/', async (req, res) => {
     try {
         const db = await getDb();
-        const row = await getRow(db, 'SELECT * FROM EventSettings WHERE id = 1');
+        const row = await getRow(db, 'SELECT * FROM EventSettings WHERE sessionKey = ?', [req.sessionKey]);
+        if (!row) return res.status(404).json({ errors: ['Settings not found for this session'] });
         res.json({
             eventName: row.eventName,
             eventIcon: row.eventIcon || '⚡',
@@ -54,10 +55,11 @@ router.put('/', async (req, res) => {
         sets.push("updatedAt = datetime('now')");
 
         if (sets.length > 1) {
-            await db.execute({ sql: `UPDATE EventSettings SET ${sets.join(', ')} WHERE id = 1`, args: params });
+            params.push(req.sessionKey);
+            await db.execute({ sql: `UPDATE EventSettings SET ${sets.join(', ')} WHERE sessionKey = ?`, args: params });
         }
 
-        const row = await getRow(db, 'SELECT * FROM EventSettings WHERE id = 1');
+        const row = await getRow(db, 'SELECT * FROM EventSettings WHERE sessionKey = ?', [req.sessionKey]);
         res.json({
             eventName: row.eventName,
             eventIcon: row.eventIcon || '⚡',

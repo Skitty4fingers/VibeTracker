@@ -1476,3 +1476,218 @@ tr:hover td {
     font-size: 1.5rem;
   }
 }
+
+/* ============ Landing Page ============ */
+body.landing-mode #main-nav {
+  display: none;
+}
+
+body.landing-mode #app {
+  padding: 0;
+  max-width: none;
+}
+
+.landing-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  background: radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 60%),
+    var(--bg-primary);
+}
+
+.landing-hero {
+  text-align: center;
+  margin-bottom: 3rem;
+  animation: fadeIn 600ms ease;
+}
+
+.landing-icon {
+  font-size: 4rem;
+  margin-bottom: 0.5rem;
+  filter: drop-shadow(0 0 24px rgba(99, 102, 241, 0.5));
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.landing-title {
+  font-size: 3rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.25rem;
+}
+
+.landing-subtitle {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  font-weight: 400;
+}
+
+.landing-cards {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  animation: fadeIn 800ms ease 200ms both;
+}
+
+.landing-card {
+  background: rgba(26, 31, 53, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 2.5rem 2rem;
+  width: 300px;
+  text-align: center;
+  transition: var(--transition-slow);
+}
+
+.landing-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 8px 40px rgba(99, 102, 241, 0.15);
+  transform: translateY(-4px);
+}
+
+.landing-card-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.landing-card-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.landing-card-desc {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+.landing-btn {
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.landing-divider {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.landing-input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.landing-hex-input {
+  font-family: var(--font-mono) !important;
+  font-size: 1.3rem !important;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  text-align: center;
+  padding: 0.65rem 0.5rem !important;
+  flex: 1;
+}
+
+.landing-hex-input::placeholder {
+  text-transform: lowercase;
+  letter-spacing: 0.1em;
+  font-weight: 400;
+  opacity: 0.4;
+}
+
+.landing-input-group .landing-btn {
+  width: auto;
+  padding: 0.65rem 1.25rem;
+  flex-shrink: 0;
+}
+
+.landing-error {
+  color: var(--danger);
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  min-height: 1.2rem;
+}
+
+/* ============ Session Badge ============ */
+.session-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+}
+
+.session-badge:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: var(--accent);
+}
+
+.session-key-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.session-key-value {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+}
+
+/* ============ Landing Responsive ============ */
+@media (max-width: 700px) {
+  .landing-cards {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .landing-card {
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .landing-divider {
+    padding: 0;
+  }
+
+  .landing-title {
+    font-size: 2.25rem;
+  }
+}

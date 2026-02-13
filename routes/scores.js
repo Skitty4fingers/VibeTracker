@@ -7,8 +7,8 @@ const { computeScoreFields, rankTeams } = require('../lib/scoring');
 router.get('/', async (req, res) => {
     try {
         const db = await getDb();
-        const settings = await getRow(db, 'SELECT * FROM EventSettings WHERE id = 1');
-        const teams = await allRows(db, 'SELECT * FROM Team ORDER BY teamName');
+        const settings = await getRow(db, 'SELECT * FROM EventSettings WHERE sessionKey = ?', [req.sessionKey]);
+        const teams = await allRows(db, 'SELECT * FROM Team WHERE sessionKey = ? ORDER BY teamName', [req.sessionKey]);
 
         const results = [];
         for (const team of teams) {
@@ -35,8 +35,8 @@ router.get('/', async (req, res) => {
         rankTeams(results);
 
         res.json({
-            scoringLocked: !!settings.scoringLocked,
-            showPartial: !!settings.showPartial,
+            scoringLocked: !!(settings && settings.scoringLocked),
+            showPartial: settings ? !!settings.showPartial : true,
             teams: results,
         });
     } catch (e) {
@@ -50,7 +50,7 @@ router.get('/:teamId', async (req, res) => {
     try {
         const db = await getDb();
         const teamId = parseInt(req.params.teamId, 10);
-        const team = await getRow(db, 'SELECT * FROM Team WHERE id = ?', [teamId]);
+        const team = await getRow(db, 'SELECT * FROM Team WHERE id = ? AND sessionKey = ?', [teamId, req.sessionKey]);
         if (!team) return res.status(404).json({ errors: ['Team not found'] });
 
         const score = await getRow(db, 'SELECT * FROM Score WHERE teamId = ?', [teamId]);
@@ -75,13 +75,13 @@ router.get('/:teamId', async (req, res) => {
 router.put('/:teamId', async (req, res) => {
     try {
         const db = await getDb();
-        const settings = await getRow(db, 'SELECT * FROM EventSettings WHERE id = 1');
-        if (settings.scoringLocked) {
+        const settings = await getRow(db, 'SELECT * FROM EventSettings WHERE sessionKey = ?', [req.sessionKey]);
+        if (settings && settings.scoringLocked) {
             return res.status(403).json({ errors: ['Scoring is locked'] });
         }
 
         const teamId = parseInt(req.params.teamId, 10);
-        const team = await getRow(db, 'SELECT * FROM Team WHERE id = ?', [teamId]);
+        const team = await getRow(db, 'SELECT * FROM Team WHERE id = ? AND sessionKey = ?', [teamId, req.sessionKey]);
         if (!team) return res.status(404).json({ errors: ['Team not found'] });
 
         const errors = [];

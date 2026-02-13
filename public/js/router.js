@@ -17,6 +17,17 @@ const Router = {
         }
 
         const app = document.getElementById('app');
+        const sessionKey = getSessionCookie();
+
+        // Session gating: if no session and not on landing or TV, redirect to landing
+        if (!sessionKey && path !== '/' && path !== '/tv') {
+            path = '/';
+        }
+
+        // If user has a session and hits /, redirect to /setup
+        if (sessionKey && path === '/') {
+            path = '/setup';
+        }
 
         // Toggle TV mode
         if (path === '/tv') {
@@ -30,8 +41,11 @@ const Router = {
             link.classList.toggle('active', link.getAttribute('href') === path);
         });
 
+        // Update session badge in nav
+        this.updateSessionBadge(sessionKey, path);
+
         // Run handler
-        const handler = this.routes[path] || this.routes['/setup'];
+        const handler = this.routes[path] || this.routes['/'];
         if (handler) {
             const cleanup = await handler(app);
             if (typeof cleanup === 'function') {
@@ -42,6 +56,25 @@ const Router = {
         // Update URL without reload
         if (window.location.pathname !== path) {
             history.pushState(null, '', path);
+        }
+    },
+
+    updateSessionBadge(sessionKey, path) {
+        const badge = document.getElementById('session-badge');
+        if (!badge) return;
+
+        if (sessionKey && path !== '/' && path !== '/tv') {
+            badge.innerHTML = `<span class="session-key-label">VIBE</span><span class="session-key-value">${esc(sessionKey.toUpperCase())}</span>`;
+            badge.style.display = 'flex';
+            badge.title = 'Click to leave this Vibe';
+            badge.onclick = () => {
+                if (confirm('Leave this Vibe? You can rejoin with the code.')) {
+                    clearSessionCookie();
+                    this.navigate('/');
+                }
+            };
+        } else {
+            badge.style.display = 'none';
         }
     },
 
@@ -62,11 +95,12 @@ const Router = {
         // Initial route
         const path = window.location.pathname;
         const validPaths = Object.keys(this.routes);
-        this.navigate(validPaths.includes(path) ? path : '/setup');
+        this.navigate(validPaths.includes(path) ? path : '/');
     },
 };
 
 // Register pages and init
+Router.register('/', LandingPage);
 Router.register('/setup', SetupPage);
 Router.register('/score', ScorePage);
 Router.register('/tv', TvPage);

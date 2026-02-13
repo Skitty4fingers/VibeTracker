@@ -40,6 +40,10 @@ const API = {
         return json;
     },
 
+    // Sessions
+    createSession: () => API.post('/api/sessions', {}),
+    joinSession: (key) => API.get(`/api/sessions/${key}`),
+
     // Settings
     getSettings: () => API.get('/api/settings'),
     updateSettings: (data) => API.put('/api/settings', data),
@@ -68,6 +72,20 @@ const API = {
     updateAnnouncement: (id, data) => API.put(`/api/announcements/${id}`, data),
     deleteAnnouncement: (id) => API.del(`/api/announcements/${id}`),
 };
+
+/* Cookie helpers */
+function getSessionCookie() {
+    const match = document.cookie.match(/(?:^|;\s*)vt_session=([^;]*)/);
+    return match ? decodeURIComponent(match[1]) : null;
+}
+
+function setSessionCookie(key) {
+    document.cookie = `vt_session=${encodeURIComponent(key)}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax`;
+}
+
+function clearSessionCookie() {
+    document.cookie = 'vt_session=; path=/; max-age=0';
+}
 
 /* Toast notifications */
 function showToast(message, type = 'success') {
