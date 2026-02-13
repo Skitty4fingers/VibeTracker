@@ -132,23 +132,24 @@ async function ScorePage(app) {
     const renderScoreGroup = (label, cats) => {
       let groupHtml = `<div class="rubric-group-label">${label}</div>`;
       for (const cat of cats) {
-        const val = score[`c${cat.id}`];
+        const ci = cat.categoryIndex;
+        const val = score[`c${ci}`];
         const hasVal = val != null;
         groupHtml += `
           <div class="slider-row">
             <div class="slider-header">
               <div class="slider-label">
-                <span class="score-num">${cat.id}</span>
+                <span class="score-num">${ci}</span>
                 <span class="score-name">${esc(cat.name)}</span>
               </div>
-              <span class="slider-value ${hasVal ? '' : 'slider-value-empty'}" id="val-c${cat.id}">${hasVal ? val : '—'}</span>
+              <span class="slider-value ${hasVal ? '' : 'slider-value-empty'}" id="val-c${ci}">${hasVal ? val : '—'}</span>
             </div>
             ${cat.guidance ? `<div class="slider-guidance">${esc(cat.guidance)}</div>` : ''}
             <div class="slider-track-wrap">
               <span class="slider-bound">1</span>
-              <input type="range" class="slider-input" id="score-c${cat.id}"
+              <input type="range" class="slider-input" id="score-c${ci}"
                      min="1" max="10" step="1" value="${hasVal ? val : 5}"
-                     data-crit="${cat.id}" data-has-value="${hasVal ? '1' : '0'}" ${disabled}>
+                     data-crit="${ci}" data-has-value="${hasVal ? '1' : '0'}" ${disabled}>
               <span class="slider-bound">10</span>
             </div>
           </div>

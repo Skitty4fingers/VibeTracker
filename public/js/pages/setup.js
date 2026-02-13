@@ -282,11 +282,11 @@ async function SetupPage(app) {
     const technicalCats = categories.filter(c => c.groupName === 'Technical');
 
     const renderGroup = (label, cats) => {
-      let html = `<div class="rubric-group-label">${label} (Criteria ${cats[0].id}–${cats[cats.length - 1].id})</div>`;
+      let html = `<div class="rubric-group-label">${label} (Criteria ${cats[0].categoryIndex}–${cats[cats.length - 1].categoryIndex})</div>`;
       for (const cat of cats) {
         html += `
           <div class="rubric-row">
-            <span class="score-num">${cat.id}</span>
+            <span class="score-num">${cat.categoryIndex}</span>
             <div class="form-group" style="margin:0">
               <input type="text" class="form-input" id="rubric-name-${cat.id}" value="${esc(cat.name)}" placeholder="Criterion name">
             </div>
