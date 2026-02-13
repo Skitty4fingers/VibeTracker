@@ -1,0 +1,15 @@
+{
+  "name": "vibetracker",
+  "version": "1.0.0",
+  "description": "Lightweight internal hackathon scoring web app",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "npx -y nodemon server.js",
+    "test": "node --test tests/scoring.test.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "sql.js": "^1.12.0"
+  }
+}

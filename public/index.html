@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeTracker</title>
+    <meta name="description" content="Lightweight internal hackathon scoring and leaderboard app">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <nav id="main-nav">
+        <div class="nav-brand">
+            <span class="nav-logo">⚡</span>
+            <span class="nav-title">VibeTracker</span>
+        </div>
+        <div class="nav-links">
+            <a href="/setup" data-route class="nav-link" id="nav-setup">
+                <span class="nav-icon">⚙️</span> Setup
+            </a>
+            <a href="/score" data-route class="nav-link" id="nav-score">
+                <span class="nav-icon">📝</span> Score
+            </a>
+            <a href="/tv" data-route class="nav-link" id="nav-tv">
+                <span class="nav-icon">📺</span> TV
+            </a>
+        </div>
+    </nav>
+    <main id="app"></main>
+    <div id="toast-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/pages/setup.js"></script>
+    <script src="/js/pages/score.js"></script>
+    <script src="/js/pages/tv.js"></script>
+    <script src="/js/router.js"></script>
+</body>
+
+</html>
